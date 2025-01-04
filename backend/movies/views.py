@@ -1,35 +1,30 @@
-from rest_framework import status, viewsets
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.registration.views import SocialLoginView
+from rest_framework import permissions, viewsets
+from rest_framework.decorators import action
 from rest_framework.views import Response
+
 from .models import Movie
-from django.contrib.auth.models import User
-from .serializers import MovieSerializer, UserSerializer
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from .permissions import IsOwner
+from .serializers import MovieSerializer
+
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    callback_url = "http://127.0.0.1:3000/"
+    client_class = OAuth2Client
 
 
 class MovieViewSet(viewsets.ModelViewSet):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    def get_queryset(self):
-        return Movie.objects.filter(owner=self.request.user)
-
-
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [AllowAny]
-
-    def list(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_403_FORBIDDEN)
-
-    def get_permissions(self):
-        if self.action == "create":
-            return [AllowAny()]
-        elif self.action in ["retrieve", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsOwner()]
-        return [IsAuthenticated()]
+    @action(detail=False, methods=["get"])
+    def my_movies(self, request):
+        movies = Movie.objects.filter(owner=request.user)
+        serializer = self.get_serializer(movies, many=True)
+        return Response(serializer.data)
