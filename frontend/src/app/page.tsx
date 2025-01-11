@@ -1,11 +1,25 @@
-import * as React from "react";
+"use client"
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
-import Link from "@mui/material/Link";
-import NextLink from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { CircularProgress } from "@mui/material";
 
 export default function Home() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
+  if (status == "loading") {
+    return <CircularProgress />;
+  }
+
+  if (!session) {
+    //  TODO: adding a popup showing message here 
+    router.push("/landing-page");
+    return;
+  }
+
   return (
     <Container maxWidth="lg">
       <Box
@@ -18,11 +32,8 @@ export default function Home() {
         }}
       >
         <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
-          Material UI - Next.js App Router example in TypeScript
+          Main content
         </Typography>
-        <Link href="/about" color="secondary" component={NextLink}>
-          Go to the about page
-        </Link>
       </Box>
     </Container>
   );

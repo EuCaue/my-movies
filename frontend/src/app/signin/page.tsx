@@ -1,7 +1,8 @@
 "use client";
 import { PasswordField } from "@/components/password-field";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Box, Button, Container, Stack, TextField } from "@mui/material";
+import {  Button, Container, Stack, TextField } from "@mui/material";
+import { signIn } from "next-auth/react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -29,8 +30,20 @@ export default function SignIn() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof signInFormSchema>) {
-    console.log(values);
+  async function onSubmit({
+    email,
+    password,
+  }: z.infer<typeof signInFormSchema>) {
+    try {
+      const res = await signIn("credentials", {
+        callbackUrl: "/",
+        username: email,
+        password,
+      });
+      console.debug(res)
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   return (

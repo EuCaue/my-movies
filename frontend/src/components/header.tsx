@@ -7,12 +7,13 @@ import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { AccountCircleRounded } from "@mui/icons-material";
+import { signOut, useSession } from "next-auth/react";
 import { Link, Stack } from "@mui/material";
-import { useRouter } from "next/navigation";
 
 export default function Header() {
-  const router = useRouter();
+  const { data: session } = useSession();
   const [anchorEl, setAnchorEl] = useState(null);
+  const isLoggedIn = !!session;
 
   function handleMenuOpen(event: unknown) {
     // @ts-expect-error no no
@@ -25,15 +26,9 @@ export default function Header() {
 
   function onLogout() {
     console.log("logged out");
-    router.push("/signin");
+    signOut({ redirectTo: "/landing-page" });
     handleMenuClose();
   }
-
-  const onLogin = () => {
-    console.log("login");
-  };
-
-  const isLoggedIn = true;
 
   return (
     <AppBar position="fixed">
@@ -47,9 +42,11 @@ export default function Header() {
           My Movies
         </Link>
         <Stack direction={"row"} spacing={1}>
-          <IconButton color="inherit" onClick={handleMenuOpen}>
-            <AccountCircleRounded />
-          </IconButton>
+          {isLoggedIn ? (
+            <IconButton color="inherit" onClick={handleMenuOpen}>
+              <AccountCircleRounded />
+            </IconButton>
+          ) : null}
           <ModeSwitch />
         </Stack>
         <Menu
