@@ -6,6 +6,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { signIn } from "next-auth/react";
+import AuthButton from "@/components/auth-button";
 
 const signUpFormSchema = z
   .object({
@@ -17,15 +18,15 @@ const signUpFormSchema = z
       .string()
       .nonempty("Please specify an email")
       .email("Please specify a valid email"),
-    password1: z
+    password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters." })
       .regex(/[!@#$%^&*(),.?":{}|<>]/, {
         message: "Password must include at least one special character.",
       }),
-    password2: z.string().nonempty("Please confirm your password."),
+    passwordConfirm: z.string().nonempty("Please confirm your password."),
   })
-  .refine((data) => data.password1 === data.password2, {
+  .refine((data) => data.password === data.passwordConfirm, {
     path: ["passwordConfirm"],
     message: "Passwords do not match",
   });
@@ -54,7 +55,9 @@ const useRegisterUser = () => {
 export default function SignUp() {
   const { mutate, isPending, error } = useRegisterUser();
 
-  const backendError = error ? JSON.parse(error.message)?.details : {};
+  const backendError: Record<string, string> = error
+    ? JSON.parse(error.message)?.details
+    : {};
 
   const {
     control,
@@ -65,14 +68,20 @@ export default function SignUp() {
     mode: "onChange",
     defaultValues: {
       username: "",
-      password1: "",
-      password2: "",
+      password: "",
+      passwordConfirm: "",
       email: "",
     },
   });
 
   async function onSubmit(credentials: z.infer<typeof signUpFormSchema>) {
-    mutate(credentials, {
+    const transformedCredentials = {
+      ...credentials,
+      password_confirm: credentials.passwordConfirm,
+    };
+    // @ts-expect-error no no
+    delete transformedCredentials.passwordConfirm;
+    mutate(transformedCredentials, {
       onError: (error) => {
         console.error("Backend error:", error);
       },
@@ -80,7 +89,7 @@ export default function SignUp() {
         try {
           await signIn("credentials", {
             email: credentials.email,
-            password: credentials.password1,
+            password: credentials.password,
             callbackUrl: "/",
           });
         } catch (error) {
@@ -145,7 +154,7 @@ export default function SignUp() {
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
             <Controller
-              name="password1"
+              name="password"
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <PasswordField
@@ -154,13 +163,13 @@ export default function SignUp() {
                   id="password"
                   label="Password"
                   placeholder="Enter your password"
-                  error={Boolean(error || backendError["password1"])}
-                  helperText={error?.message || backendError["password1"]}
+                  error={Boolean(error || backendError["password"])}
+                  helperText={error?.message || backendError["password"]}
                 />
               )}
             />
             <Controller
-              name="password2"
+              name="passwordConfirm"
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <PasswordField
@@ -169,21 +178,16 @@ export default function SignUp() {
                   id="passwordConfirm"
                   label="Confirm Password"
                   placeholder="Confirm your password"
-                  error={Boolean(error || backendError["password2"])}
-                  helperText={error?.message || backendError["password2"]}
+                  error={Boolean(error || backendError["passwordConfirm"])}
+                  helperText={error?.message || backendError["passwordConfirm"]}
                 />
               )}
             />
           </Stack>
-
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={!isValid || isPending}
-          >
-            {isPending ? "Signing Up..." : "Sign Up"}
-          </Button>
+          <AuthButton
+            isValid={isValid || isPending}
+            text={isPending ? "Signing Up..." : "Sign Up"}
+          />
           <Button
             type="button"
             color="info"

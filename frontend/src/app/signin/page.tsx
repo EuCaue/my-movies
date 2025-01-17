@@ -1,8 +1,9 @@
 "use client";
+import AuthButton from "@/components/auth-button";
 import { PasswordField } from "@/components/password-field";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {  Button, Container, Stack, TextField } from "@mui/material";
-import { signIn } from "next-auth/react";
+import { Button, Container, Stack, TextField } from "@mui/material";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -17,6 +18,8 @@ const signInFormSchema = z.object({
 type SignInFormFields = z.infer<typeof signInFormSchema>;
 
 export default function SignIn() {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
   const {
     control,
     handleSubmit,
@@ -34,15 +37,18 @@ export default function SignIn() {
     email,
     password,
   }: z.infer<typeof signInFormSchema>) {
+    setIsLoading(true);
     try {
       const res = await signIn("credentials", {
         callbackUrl: "/",
         username: email,
         password,
       });
-      console.debug(res)
+      console.debug(res);
     } catch (err) {
       console.log(err);
+    } finally {
+    setIsLoading(false);
     }
   }
 
@@ -93,14 +99,10 @@ export default function SignIn() {
               />
             )}
           />
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={!isValid}
-          >
-            Sign In
-          </Button>
+          <AuthButton
+            isValid={isValid || isLoading}
+            text={isLoading ? "Signing In..." : "Sign In"}
+          />
           <Stack spacing={1} direction={"row"}>
             <Button
               type="button"

@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import axios from "axios";
+import Google from "next-auth/providers/google";
 
 // Constantes e funções auxiliares
 const BACKEND_ACCESS_TOKEN_LIFETIME = 45 * 60; // 45 minutos
@@ -14,6 +14,29 @@ const SIGN_IN_HANDLERS = {
   credentials: async (user, account, profile, email, credentials) => {
     return true;
   },
+  google: async (user, account, profile, email, credentials) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXTAUTH_BACKEND_URL}google/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            access_token: account["id_token"],
+          }),
+        },
+      );
+      const data = await response.json();
+      console.log("response", response);
+      account["meta"] = data;
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  },
 };
 
 const SIGN_IN_PROVIDERS = Object.keys(SIGN_IN_HANDLERS);
@@ -21,17 +44,19 @@ const SIGN_IN_PROVIDERS = Object.keys(SIGN_IN_HANDLERS);
 export async function signUp(credentials: {
   username: string;
   email: string;
-  password1: string;
-  password2: string;
+  password: string;
+  passwordConfirm: string;
 }) {
   try {
     const apiUrl = process.env.NEXTAUTH_BACKEND_URL + "auth/register/";
-    const response = await axios({
-      url: apiUrl,
-      method: "post",
-      data: credentials,
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(credentials),
     });
-    const data = response.data;
+    const data = response.json();
     if (data) return data;
   } catch (err) {
     console.log(err);
@@ -54,17 +79,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         try {
           const apiUrl = process.env.NEXTAUTH_BACKEND_URL + "auth/login/";
-          const response = await axios({
-            url: apiUrl,
-            method: "post",
-            data: credentials,
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(credentials),
           });
-          const data = response.data;
+          const data = response.json();
           if (data) return data;
         } catch (error) {
           console.error(error);
         }
         return null;
+      },
+    }),
+
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+        },
       },
     }),
   ],
@@ -91,15 +130,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       if (getCurrentEpochTime() > token["ref"]) {
-        const response = await axios({
-          method: "post",
-          url: process.env.NEXTAUTH_BACKEND_URL + "auth/token/refresh/",
-          data: {
-            refresh: token["refresh_token"],
+        const response = await fetch(
+          `${process.env.NEXTAUTH_BACKEND_URL}auth/token/refresh/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              refresh: token["refresh_token"],
+            }),
           },
-        });
-        token["access_token"] = response.data.access;
-        token["refresh_token"] = response.data.refresh;
+        );
+        const data = await response.json();
+        token["access_token"] = data.access;
+        token["refresh_token"] = data.refresh;
         token["ref"] = getCurrentEpochTime() + BACKEND_ACCESS_TOKEN_LIFETIME;
       }
       return token;
