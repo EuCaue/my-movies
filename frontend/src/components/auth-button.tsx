@@ -23,7 +23,7 @@ export default function AuthButton({ isValid, text }: AuthButtonProps) {
         color="primary"
         variant="contained"
         onClick={async () => {
-          await signIn("google", {callbackUrl: "/"});
+          await signIn("google", { callbackUrl: "/" });
         }}
         sx={{
           alignSelf: "center",

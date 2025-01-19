@@ -13,7 +13,7 @@ const signUpFormSchema = z
     username: z
       .string()
       .nonempty("Name is required")
-      .max(255, "Name must be less than 100 characters"),
+      .max(255, "Name must be less than 255 characters"),
     email: z
       .string()
       .nonempty("Please specify an email")
