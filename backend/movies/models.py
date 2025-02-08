@@ -21,7 +21,7 @@ class Movie(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name="movies"
     )
     title = models.CharField(max_length=120)
-    description = models.TextField()
+    description = models.TextField(max_length=450)
     release_year = models.IntegerField()
     movie_rating = models.DecimalField(max_digits=3, decimal_places=2)
     favorite = models.BooleanField(default=False)
