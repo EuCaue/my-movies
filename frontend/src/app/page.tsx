@@ -3,6 +3,7 @@ import Container from "@mui/material/Container";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
+  Alert,
   Button,
   CircularProgress,
   Dialog,
@@ -10,94 +11,348 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Fab,
+  Rating,
+  Stack,
+  useMediaQuery,
 } from "@mui/material";
-import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
-import Box from "@mui/material/Box";
-import { Add } from "@mui/icons-material";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import FormTextField from "@/components/form-text-field";
-import FormHoverRating from "@/components/form-hover-rating";
-import FormFavorite from "@/components/form-favorite";
-import FormSelect from "@/components/form-select";
-const movieSchema = z.object({
-  title: z
-    .string()
-    .nonempty()
-    .max(255, "Title must be less than 255 characters"),
-  description: z
-    .string()
-    .nonempty()
-    .max(255, "Description must be less than 255 characters"),
-  releaseYear: z.number().default(2025),
-  rating: z
-    .number()
-    .max(5, "Max Rating should be 5")
-    .min(0, "Min Value should be 0"),
-  favorite: z.boolean().default(false),
-  watchStatus: z.enum(["Not Watched", "Watching", "Watched"]),
-});
-
+import {
+  DataGrid,
+  GridColDef,
+  GridRowModel,
+  GridRenderCellParams,
+  GridPreProcessEditCellProps,
+  GridActionsCellItem,
+} from "@mui/x-data-grid";
+import { Add, Delete, Favorite, FavoriteBorder } from "@mui/icons-material";
+import { useCallback, useEffect, useState } from "react";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import FormYearPicker from "@/components/form-year-picker";
+import theme from "@/theme";
+import EditableCell, { type CellValue } from "@/components/editable-cell";
+import MovieForm, {
+  movieSchema,
+  type MovieFormFields,
+} from "@/components/forms/movie-form";
+import BoxCenter from "@/components/box-center";
+import Snackbar from "@mui/material/Snackbar";
+import { useAuthQuery } from "@/hooks/useAuthQuery";
 
-type MovieFormFields = z.infer<typeof movieSchema>;
+const dataGridSchema = movieSchema.pick({ title: true, description: true });
+
+type RenderEditCellProps = {
+  params: GridRenderCellParams<GridRowModel, CellValue>;
+  type: string;
+};
+
+function RenderEditCell({ params, type }: RenderEditCellProps) {
+  const handleChange = (newValue: CellValue) => {
+    params.api.setEditCellValue({
+      id: params.id,
+      field: params.field,
+      value: newValue,
+    });
+  };
+
+  return (
+    <EditableCell type={type} value={params.value} onChange={handleChange} />
+  );
+}
+
+const renderEditCell = (
+  params: GridRenderCellParams<GridRowModel, CellValue>,
+  type: string,
+) => {
+  return (
+    <EditableCell
+      type={type}
+      value={params.value}
+      onChange={(newValue) =>
+        params.api.setEditCellValue({
+          id: params.id,
+          field: params.field,
+          value: newValue,
+        })
+      }
+    />
+  );
+};
+function transformData(data: any[]): any[] {
+  return data.map(
+    ({
+      created_at,
+      owner,
+      id,
+      title,
+      description,
+      release_year,
+      movie_rating,
+      favorite,
+      watch_status,
+    }) => ({
+      id,
+      col1: title,
+      col2: description,
+      col3: release_year,
+      col4: movie_rating,
+      col5: favorite,
+      col6: watch_status,
+    }),
+  );
+}
+
+function transformToSnakeCase(obj: any): any {
+  return {
+    id: obj.id,
+    title: obj.col1,
+    description: obj.col2,
+    release_year: obj.col3,
+    movie_rating: obj.col4,
+    favorite: obj.col5,
+    watch_status: obj.col6,
+  };
+}
 
 export default function Home() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [openPopup, setOpenPopup] = useState<boolean>(false);
-  const {
-    control,
-    formState: { isValid, defaultValues },
-    handleSubmit,
-  } = useForm<MovieFormFields>({
-    resolver: zodResolver(movieSchema),
-    mode: "onChange",
-    defaultValues: {
-      title: "",
-      description: "",
-      releaseYear: 2025,
-      rating: 2.5,
-      favorite: false,
-      watchStatus: "Watched",
-    },
-  });
-  const rows: GridRowsProp = [];
-  async function onSubmit(data: z.infer<typeof movieSchema>) {
-    console.log(data);
-  }
-  const handleClickOpen = () => {
-    setOpenPopup(true);
-  };
+  const [showPopup, setShowPopup] = useState<boolean>(false);
+  const [showDeletePopup, setShowDeletePopup] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [rows, setRows] = useState<any[]>(() => {});
+  const [idToDelete, setIdToDelete] = useState<string | null>(null);
+  const { query, postMutation, updateMutation, deleteMutation } = useAuthQuery(
+    "movies",
+    session?.accessToken,
+  );
 
-  const handleClose = () => {
+  function handleClosePopup() {
+    setShowDeletePopup(false);
+    setIdToDelete(null);
+  }
+
+  useEffect(() => {
+    if (query.data) {
+      const newRows = transformData(query.data);
+      setRows(newRows);
+    }
+  }, [query.data]);
+
+  async function onSubmit({
+    title,
+    description,
+    releaseYear,
+    rating,
+    favorite,
+    watchStatus,
+  }: MovieFormFields) {
+    handleClose();
+    postMutation.mutate({
+      title,
+      description,
+      release_year: releaseYear,
+      movie_rating: rating,
+      favorite,
+      watch_status: watchStatus,
+    });
+  }
+  function handleClickOpen() {
+    setOpenPopup(true);
+  }
+
+  function handleClose() {
     setOpenPopup(false);
-  };
+  }
+
+  const processRowUpdate = useCallback(
+    (updatedRow: GridRowModel) => {
+      //  TODO: maybe use useMemo()
+      const currentRow = rows.find((row) => row.id === updatedRow.id); 
+
+      if (!currentRow) {
+        return updatedRow;
+      }
+      const rowInSnakeCase = transformToSnakeCase(updatedRow);
+      updateMutation.mutate(rowInSnakeCase);
+      return updatedRow;
+    },
+    [rows, updateMutation],
+  );
+
+  async function preProcessEditCellProps(
+    params: GridPreProcessEditCellProps,
+    field: "title" | "description",
+  ) {
+    const { props } = params;
+    const { value } = props;
+
+    const fieldSchema = dataGridSchema.shape[field];
+    const result = fieldSchema.safeParse(value);
+
+    if (!result.success) {
+      const errorMessage = result.error.issues[0]?.message || "Invalid value";
+      setShowPopup(true);
+      setErrorMessage(errorMessage);
+      return { ...props, error: errorMessage };
+    }
+    setErrorMessage(null);
+    setShowPopup(false);
+    return { ...props, error: undefined };
+  }
 
   const columns: GridColDef[] = [
-    { field: "col1", headerName: "Title", width: 150 },
-    { field: "col2", headerName: "Description", width: 150 },
-    { field: "col3", headerName: "Release Year", width: 150 },
-    { field: "col4", headerName: "Rating", width: 150 },
-    { field: "col5", headerName: "Favorite", width: 150 },
-    { field: "col6", headerName: "Watch Status", width: 150 },
+    {
+      field: "col1",
+      headerName: "Title",
+      editable: true,
+      width: 150,
+      preProcessEditCellProps: (params) =>
+        preProcessEditCellProps(params, "title"),
+    },
+    {
+      field: "col2",
+      headerName: "Description",
+      editable: true,
+      width: 150,
+      preProcessEditCellProps: (params) =>
+        preProcessEditCellProps(params, "description"),
+    },
+    {
+      field: "col3",
+      headerName: "Year",
+      editable: true,
+      renderEditCell: (params) => renderEditCell(params, "year"),
+      width: 150,
+    },
+    {
+      field: "col4",
+      type: "number",
+      headerName: "Rating",
+      editable: true,
+      renderCell: (params) => {
+        return (
+          <BoxCenter sx={{ marginTop: "6px" }}>
+            <Rating readOnly precision={1} value={params.value} />
+          </BoxCenter>
+        );
+      },
+      renderEditCell: (params) => {
+        return (
+          <BoxCenter>
+            <RenderEditCell params={params} type="rating" />
+          </BoxCenter>
+        );
+      },
+      width: 150,
+    },
+    {
+      field: "col5",
+      headerName: "Favorite",
+      renderCell: (params) => {
+        return (
+          <BoxCenter sx={{ marginTop: "6px", textAlign: "center" }}>
+            {params.value ? <Favorite /> : <FavoriteBorder />}
+          </BoxCenter>
+        );
+      },
+      editable: true,
+      renderEditCell: (params) => {
+        return (
+          <BoxCenter>
+            <RenderEditCell params={params} type="toggle" />
+          </BoxCenter>
+        );
+      },
+      width: 150,
+    },
+    {
+      field: "col6",
+      headerName: "Status",
+      editable: true,
+      renderEditCell: (params) => {
+        return (
+          <BoxCenter>
+            <RenderEditCell params={params} type="select" />
+          </BoxCenter>
+        );
+      },
+      width: 150,
+    },
+    {
+      field: "actions",
+      type: "actions",
+      headerName: "Actions",
+      width: 100,
+      cellClassName: "actions",
+      getActions: ({ id }) => {
+        return [
+          <GridActionsCellItem
+            key={id}
+            icon={<Delete />}
+            label="Delete"
+            onClick={() => {
+              setIdToDelete(id.toString());
+              setShowDeletePopup(true);
+            }}
+            color="inherit"
+          />,
+        ];
+      },
+    },
   ];
+
   if (status == "loading") {
     return <CircularProgress />;
   }
 
   if (!session) {
-    //  TODO: adding a popup showing message here
+    //  TODO: adding a snackar message here
     router.push("/landing-page");
     return;
   }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Dialog open={showDeletePopup} onClose={handleClosePopup}>
+        <DialogTitle>Delete Movie</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are sure you to delete this movie?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            autoFocus
+            onClick={handleClosePopup}
+            variant="outlined"
+            type="button"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            type="button"
+            onClick={() => {
+              deleteMutation.mutate({ id: idToDelete! });
+              handleClosePopup();
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Snackbar
+        open={showPopup}
+        autoHideDuration={3000}
+        onClose={() => setShowPopup(false)}
+      >
+        <Alert severity="error" variant="filled" sx={{ width: "100%" }}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
       <Container
         maxWidth="sm"
         sx={{
@@ -108,85 +363,23 @@ export default function Home() {
           alignItems: "center",
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "1rem",
-          }}
-        >
-          <DataGrid rows={rows} columns={columns} />
-          <Button variant="contained" color="primary" onClick={handleClickOpen}>
-            <Add />
-          </Button>
-          <Dialog
-            open={openPopup}
-            onClose={handleClose}
-            PaperProps={{
-              component: "form",
-              onSubmit: handleSubmit(onSubmit, (errors) =>
-                console.error(errors),
-              ),
-            }}
+        <Stack direction="column" spacing={2} alignItems={"center"}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            processRowUpdate={processRowUpdate}
+            sx={{ width: fullScreen ? "90vw" : "auto" }}
+          />
+          <Fab
+            size="small"
+            color="primary"
+            aria-label="add"
+            onClick={handleClickOpen}
           >
-            <DialogTitle>Add a movie</DialogTitle>
-            <DialogContent>
-              <DialogContentText>Fill up the form</DialogContentText>
-              <FormTextField
-                name="title"
-                control={control}
-                label="Title"
-                placeholder="Title"
-              />
-              <FormTextField
-                name="description"
-                control={control}
-                label="Description"
-                placeholder="Enter the movie description"
-              />
-              <FormYearPicker
-                name="releaseYear"
-                control={control}
-                label="Release Year"
-              />
-              <FormHoverRating
-                name="rating"
-                control={control}
-                label={"Rating"}
-              />
-              <FormFavorite
-                name="favorite"
-                control={control}
-                label={"Favorite"}
-              />
-              <FormSelect
-                name="watchStatus"
-                label={"Watch Status"}
-                control={control}
-                options={[
-                  { value: "Not Watched", displayName: "Not Watched" },
-                  { value: "Watching", displayName: "Watching" },
-                  { value: "Watched", displayName: "Watched" },
-                ]}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button
-                type="button"
-                color="error"
-                variant="outlined"
-                onClick={handleClose}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" color="primary" variant="contained">
-                Submit
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </Box>
+            <Add />
+          </Fab>
+        </Stack>
+        <MovieForm onSubmit={onSubmit} onClose={handleClose} open={openPopup} />
       </Container>
     </LocalizationProvider>
   );

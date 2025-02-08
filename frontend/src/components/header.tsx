@@ -25,7 +25,6 @@ export default function Header() {
   }
 
   function onLogout() {
-    console.log("logged out");
     signOut({ redirectTo: "/landing-page" });
     handleMenuClose();
   }

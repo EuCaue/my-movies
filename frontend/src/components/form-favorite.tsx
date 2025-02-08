@@ -1,9 +1,9 @@
 import { Favorite, FavoriteBorder } from "@mui/icons-material";
 import ToggleButton from "@mui/material/ToggleButton";
-import { InputLabel} from "@mui/material";
+import { InputLabel, Stack } from "@mui/material";
 import { Control, Controller } from "react-hook-form";
 type FormFavoriteProps = {
-  name:string;
+  name: string;
   label: string;
   control: Control<any>;
 };
@@ -13,7 +13,7 @@ export default function FormFavorite({
   control,
 }: FormFavoriteProps) {
   return (
-    <>
+    <Stack direction="column">
       {label && <InputLabel>{label}</InputLabel>}
       <Controller
         name={name}
@@ -25,7 +25,7 @@ export default function FormFavorite({
               selected={field.value}
               color="error"
               onChange={() => field.onChange(!field.value)}
-              sx={{border: "none", backgroundColor: "none"}}
+              sx={{ border: "none", backgroundColor: "none" }}
               aria-label="toggle favorite"
             >
               {field.value ? <Favorite /> : <FavoriteBorder />}
@@ -33,6 +33,6 @@ export default function FormFavorite({
           </>
         )}
       />
-    </>
+    </Stack>
   );
 }

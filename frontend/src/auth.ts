@@ -2,9 +2,8 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 
-// Constantes e funções auxiliares
-const BACKEND_ACCESS_TOKEN_LIFETIME = 45 * 60; // 45 minutos
-const BACKEND_REFRESH_TOKEN_LIFETIME = 6 * 24 * 60 * 60; // 6 dias
+const BACKEND_ACCESS_TOKEN_LIFETIME = 45 * 60; // 45 min
+const BACKEND_REFRESH_TOKEN_LIFETIME = 6 * 24 * 60 * 60; // 6 days
 
 const getCurrentEpochTime = () => {
   return Math.floor(new Date().getTime() / 1000);
@@ -29,7 +28,6 @@ const SIGN_IN_HANDLERS = {
         },
       );
       const data = await response.json();
-      console.log("response", response);
       account["meta"] = data;
       return true;
     } catch (error) {
@@ -40,28 +38,6 @@ const SIGN_IN_HANDLERS = {
 };
 
 const SIGN_IN_PROVIDERS = Object.keys(SIGN_IN_HANDLERS);
-
-export async function signUp(credentials: {
-  username: string;
-  email: string;
-  password: string;
-  passwordConfirm: string;
-}) {
-  try {
-    const apiUrl = process.env.NEXTAUTH_BACKEND_URL + "auth/register/";
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(credentials),
-    });
-    const data = response.json();
-    if (data) return data;
-  } catch (err) {
-    console.log(err);
-  }
-}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
@@ -149,8 +125,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return token;
     },
-    async session({ token }) {
-      return token;
+    async session({ session, token }) {
+      session.user = token.user;
+      session.accessToken = token.access_token;
+      session.refreshToken = token.refresh_token;
+      return session;
     },
   },
 });

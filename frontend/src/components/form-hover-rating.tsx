@@ -38,7 +38,7 @@ export default function FormHoverRating({
   return (
     <Box>
       {label && <InputLabel>{label}</InputLabel>}
-    <Stack direction={"row"}>
+    <Stack direction={"column"}>
       <Controller
         name={name}
         control={control}
@@ -56,7 +56,7 @@ export default function FormHoverRating({
               }
             />
             {field.value !== null && (
-              <Box sx={{ ml: 2 }}>
+              <Box sx={{ ml: 2, alignSelf: "center", textAlign: "center" }}>
                 {labels[hover !== -1 ? hover : field.value]}
               </Box>
             )}
