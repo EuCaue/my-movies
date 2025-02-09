@@ -62,10 +62,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
             body: JSON.stringify(credentials),
           });
-          const data = response.json();
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            const errorMessage = data.non_field_errors?.[0] as
+              | string
+              | undefined;
+            return { error: errorMessage || "Invalid credentials." };
+          }
           if (data) return data;
         } catch (error) {
-          console.error(error);
+          console.error("ERROR LOGIN -> ", error);
         }
         return null;
       },
@@ -86,6 +94,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account, profile, email, credentials }) {
       if (!SIGN_IN_PROVIDERS.includes(account.provider)) return false;
+      if (user.error) {
+        console.error("Login Error", user.error);
+        return false;
+      }
       return SIGN_IN_HANDLERS[account.provider](
         user,
         account,

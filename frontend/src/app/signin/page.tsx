@@ -2,7 +2,16 @@
 import AuthButton from "@/components/auth-button";
 import { PasswordField } from "@/components/password-field";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Container, Stack, TextField } from "@mui/material";
+import {
+  Alert,
+  Button,
+  Container,
+  Snackbar,
+  Stack,
+  TextField,
+} from "@mui/material";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,7 +27,17 @@ const signInFormSchema = z.object({
 type SignInFormFields = z.infer<typeof signInFormSchema>;
 
 export default function SignIn() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [openLoginStatus, setOpenLoginStatus] = useState<boolean>(false);
+  const [loginStatus, setLoginStatus] = useState<{
+    message: string;
+    severity: "error" | "success";
+  }>({ message: "", severity: "error" });
+
+  function handleClose() {
+    setOpenLoginStatus(false);
+  }
 
   const {
     control,
@@ -40,15 +59,30 @@ export default function SignIn() {
     setIsLoading(true);
     try {
       const res = await signIn("credentials", {
-        callbackUrl: "/",
-        username: email,
+        email,
         password,
+        redirect: false,
       });
-      console.debug(res);
+      setOpenLoginStatus(true);
+
+      if (res?.error) {
+        setLoginStatus({
+          message: "Invalid credentials. Please try again.",
+          severity: "error",
+        });
+        return;
+      }
+
+      setLoginStatus({
+        message: "Login successful. Welcome back!",
+        severity: "success",
+      });
+      router.push("/")
+      
     } catch (err) {
-      console.log(err);
+      console.log("error on signIN", err);
     } finally {
-    setIsLoading(false);
+      setIsLoading(false);
     }
   }
 
@@ -64,6 +98,22 @@ export default function SignIn() {
         alignItems: "center",
       }}
     >
+      <Snackbar
+        open={openLoginStatus}
+        autoHideDuration={6000}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        key={"bottomcenter"}
+      >
+        <Alert
+          onClose={handleClose}
+          severity={loginStatus.severity}
+          variant="filled"
+          sx={{ width: "100%", fontSize: "1.125rem" }}
+        >
+          {loginStatus.message}
+        </Alert>
+      </Snackbar>
       <form
         noValidate
         onSubmit={handleSubmit(onSubmit, (errors) => console.error(errors))}
