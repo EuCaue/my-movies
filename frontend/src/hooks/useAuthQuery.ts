@@ -1,23 +1,29 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseMutationOptions,
+  UseQueryOptions,
+} from "@tanstack/react-query";
 
-const fetchData = async (endpoint: string, token?: string) => {
+async function fetchData(endpoint: string, token?: string) {
   if (!token) throw new Error("Invalid Token");
 
   const response = await fetch(`/api/fetchProxy?endpoint=${endpoint}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (!response.ok) throw new Error("Error whille fetching data...");
+  if (!response.ok) throw new Error("Error while fetching data...");
 
   return response.json();
-};
+}
 
 type SendData = {
   endpoint: string;
   method: "POST" | "PUT" | "DELETE";
   body?: any;
   token?: string;
-  id?: string;
+  id?: number;
 };
 
 async function sendData({ endpoint, method, body, token, id }: SendData) {
@@ -39,36 +45,49 @@ async function sendData({ endpoint, method, body, token, id }: SendData) {
   return response.json();
 }
 
-export function useAuthQuery(endpoint: string, token?: string) {
+type UseAuthQueryOptions = {
+  queryOptions?: Omit<
+    UseQueryOptions<any, any, any, any>,
+    "queryFn" | "queryKey"
+  >;
+  postOptions?: UseMutationOptions<any, any, any, any>;
+  updateOptions?: UseMutationOptions<any, any, any, any>;
+  deleteOptions?: UseMutationOptions<any, any, any, any>;
+};
+
+export function useAuthQuery(
+  endpoint: string,
+  token?: string,
+  options?: UseAuthQueryOptions,
+) {
   const queryClient = useQueryClient();
 
-  // GET
   const query = useQuery({
     queryKey: [endpoint],
     queryFn: () => fetchData(endpoint, token),
-    enabled: !!token, 
+    enabled: !!token,
+    ...options?.queryOptions,
   });
 
-  // POST
   const postMutation = useMutation({
     mutationFn: (body: any) =>
       sendData({ endpoint, method: "POST", body, token }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [endpoint] }),
+    ...options?.postOptions,
   });
 
-  // PUT
   const updateMutation = useMutation({
-    mutationFn: ({ id, ...data }: { id: string; [key: string]: any }) =>
+    mutationFn: ({ id, ...data }: { id: number; [key: string]: any }) =>
       sendData({ endpoint, method: "PUT", body: data, token, id }),
     onSuccess: () => query.refetch(),
+    ...options?.updateOptions,
   });
 
-  // DELETE
   const deleteMutation = useMutation({
-    mutationFn: ({ id, ...data }: { id: string; [key: string]: any }) =>
+    mutationFn: ({ id, ...data }: { id: number; [key: string]: any }) =>
       sendData({ endpoint, method: "DELETE", body: data, token, id }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [endpoint] }),
-    onError: (err) => console.error(err),
+    ...options?.deleteOptions,
   });
 
   return { query, postMutation, updateMutation, deleteMutation };

@@ -25,7 +25,7 @@ import {
   GridActionsCellItem,
 } from "@mui/x-data-grid";
 import { Add, Delete, Favorite, FavoriteBorder } from "@mui/icons-material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import theme from "@/theme";
@@ -77,11 +77,9 @@ const renderEditCell = (
     />
   );
 };
-function transformData(data: any[]): any[] {
-  return data.map(
-    ({
-      created_at,
-      owner,
+function transformSnakeCaseToRow(data: GridRowSnakeCase[]): GridRow[] {
+  return data.map((item) => {
+    const {
       id,
       title,
       description,
@@ -89,7 +87,10 @@ function transformData(data: any[]): any[] {
       movie_rating,
       favorite,
       watch_status,
-    }) => ({
+      ...rest
+    } = item;
+
+    return {
       id,
       col1: title,
       col2: description,
@@ -97,21 +98,56 @@ function transformData(data: any[]): any[] {
       col4: movie_rating,
       col5: favorite,
       col6: watch_status,
-    }),
-  );
+      ...rest,
+    };
+  });
 }
 
-function transformToSnakeCase(obj: any): any {
+function transformRowToSnakeCase(obj: GridRow): GridRowSnakeCase {
+  const {
+    id,
+    col1: title,
+    col2: description,
+    col3: release_year,
+    col4: movie_rating,
+    col5: favorite,
+    col6: watch_status,
+    ...rest
+  } = obj;
+
   return {
-    id: obj.id,
-    title: obj.col1,
-    description: obj.col2,
-    release_year: obj.col3,
-    movie_rating: obj.col4,
-    favorite: obj.col5,
-    watch_status: obj.col6,
+    id,
+    title,
+    description,
+    release_year,
+    movie_rating,
+    favorite,
+    watch_status,
+    ...rest,
   };
 }
+
+type GridRowSnakeCase = {
+  id: number;
+  title: string;
+  description: string;
+  release_year: number;
+  movie_rating: string;
+  favorite: boolean;
+  watch_status: string;
+  [key: string]: any;
+};
+
+type GridRow = {
+  id: number;
+  col1: string;
+  col2: string;
+  col3: number;
+  col4: string;
+  col5: boolean;
+  col6: string;
+  [key: string]: any;
+};
 
 export default function Home() {
   const router = useRouter();
@@ -121,24 +157,21 @@ export default function Home() {
   const [showPopup, setShowPopup] = useState<boolean>(false);
   const [showDeletePopup, setShowDeletePopup] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [rows, setRows] = useState<any[]>(() => {});
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
   const { query, postMutation, updateMutation, deleteMutation } = useAuthQuery(
     "movies",
     session?.accessToken,
+    {
+      queryOptions: {
+        select: (data) => transformSnakeCaseToRow(data),
+      },
+    },
   );
 
   function handleClosePopup() {
     setShowDeletePopup(false);
     setIdToDelete(null);
   }
-
-  useEffect(() => {
-    if (query.data) {
-      const newRows = transformData(query.data);
-      setRows(newRows);
-    }
-  }, [query.data]);
 
   async function onSubmit({
     title,
@@ -168,17 +201,17 @@ export default function Home() {
 
   const processRowUpdate = useCallback(
     (updatedRow: GridRowModel) => {
-      //  TODO: maybe use useMemo()
-      const currentRow = rows.find((row) => row.id === updatedRow.id); 
+      const currentRow = query.data.find((row: GridRow) => row.id === updatedRow.id);
+
 
       if (!currentRow) {
         return updatedRow;
       }
-      const rowInSnakeCase = transformToSnakeCase(updatedRow);
+      const rowInSnakeCase = transformRowToSnakeCase(updatedRow as GridRow);
       updateMutation.mutate(rowInSnakeCase);
       return updatedRow;
     },
-    [rows, updateMutation],
+    [query.data, updateMutation],
   );
 
   async function preProcessEditCellProps(
@@ -365,7 +398,7 @@ export default function Home() {
       >
         <Stack direction="column" spacing={2} alignItems={"center"}>
           <DataGrid
-            rows={rows}
+            rows={query.data}
             columns={columns}
             processRowUpdate={processRowUpdate}
             sx={{ width: fullScreen ? "90vw" : "auto" }}

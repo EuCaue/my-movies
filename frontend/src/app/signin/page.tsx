@@ -77,8 +77,7 @@ export default function SignIn() {
         message: "Login successful. Welcome back!",
         severity: "success",
       });
-      router.push("/")
-      
+      router.push("/");
     } catch (err) {
       console.log("error on signIN", err);
     } finally {
