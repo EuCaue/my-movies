@@ -12,11 +12,10 @@ import { Link, Stack } from "@mui/material";
 
 export default function Header() {
   const { data: session } = useSession();
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const isLoggedIn = !!session;
 
-  function handleMenuOpen(event: unknown) {
-    // @ts-expect-error no no
+  function handleMenuOpen(event: React.MouseEvent<HTMLButtonElement>) {
     setAnchorEl(event.currentTarget);
   }
 
@@ -33,7 +32,7 @@ export default function Header() {
     <AppBar position="fixed">
       <Toolbar>
         <Link
-          href="/"
+          href={session ? "/" : "/landing-page"}
           underline="none"
           variant="h6"
           sx={{ flexGrow: 1, color: "inherit" }}
