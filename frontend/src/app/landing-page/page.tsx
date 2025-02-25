@@ -10,8 +10,8 @@ import {
   BoxProps,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useSession } from "next-auth/react";
 
-// Reusable Hero component
 type HeroProps = BoxProps & {
   children: React.ReactNode;
 };
@@ -46,6 +46,7 @@ export default function Home() {
 
 function HeroSection() {
   const theme = useTheme();
+  const { data: session } = useSession();
   return (
     <Hero component="section" sx={{}}>
       <Container
@@ -69,34 +70,53 @@ function HeroSection() {
           effortlessly.
         </Typography>
         <Stack spacing={2} direction="row" justifyContent="center" mt={4}>
-          <Link href="/signup" underline="none">
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              sx={{
-                textTransform: "none",
-                transition: "all 0.3s",
-                "&:hover": { transform: "scale(1.05)" },
-              }}
-            >
-              Sign Up
-            </Button>
-          </Link>
-          <Link href="/signin" underline="none">
-            <Button
-              variant="outlined"
-              color="primary"
-              size="large"
-              sx={{
-                textTransform: "none",
-                transition: "all 0.3s",
-                "&:hover": { transform: "scale(1.05)" },
-              }}
-            >
-              Sign In
-            </Button>
-          </Link>
+          {!!session ? (
+            <Link href={"/"} underline="none">
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                sx={{
+                  textTransform: "none",
+                  transition: "all 0.3s",
+                  "&:hover": { transform: "scale(1.05)" },
+                }}
+              >
+                Get Started
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/signup" underline="none">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  sx={{
+                    textTransform: "none",
+                    transition: "all 0.3s",
+                    "&:hover": { transform: "scale(1.05)" },
+                  }}
+                >
+                  Sign Up
+                </Button>
+              </Link>
+              <Link href="/signin" underline="none">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="large"
+                  sx={{
+                    textTransform: "none",
+                    transition: "all 0.3s",
+                    "&:hover": { transform: "scale(1.05)" },
+                  }}
+                >
+                  Sign In
+                </Button>
+              </Link>
+            </>
+          )}
         </Stack>
       </Container>
     </Hero>
@@ -186,7 +206,8 @@ function AboutSection() {
           mt={2}
         >
           This platform helps you manage your movie collection effortlessly.
-          Whether it's rating, tracking, or organizing, we've got you covered.
+          Whether it's rating, tracking, or organizing, we&apos;ve got you
+          covered.
         </Typography>
       </Container>
     </Hero>
@@ -195,6 +216,7 @@ function AboutSection() {
 
 function CallToActionSection() {
   const theme = useTheme();
+  const { data: session } = useSession();
   return (
     <Hero
       component="section"
@@ -224,7 +246,7 @@ function CallToActionSection() {
         >
           Join now to track, rate, and organize your favorite movies with ease.
         </Typography>
-        <Link href="/signup" underline="none">
+        <Link href={!!session ? "/" : "signup"} underline="none">
           <Button
             variant="contained"
             color="primary"
