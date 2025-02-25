@@ -40,7 +40,10 @@ async function sendData({ endpoint, method, body, token, id }: SendData) {
     body: JSON.stringify(body) ?? {},
   });
 
-  if (!response.ok) throw new Error(`Error on ${method}`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw { message: "Request failed", details: errorData };
+  }
 
   return response.json();
 }
@@ -63,7 +66,7 @@ export function useAuthQuery(
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: [endpoint],
+    queryKey: [endpoint, token],
     queryFn: () => fetchData(endpoint, token),
     enabled: !!token,
     ...options?.queryOptions,
@@ -79,7 +82,7 @@ export function useAuthQuery(
   const updateMutation = useMutation({
     mutationFn: ({ id, ...data }: { id: number; [key: string]: any }) =>
       sendData({ endpoint, method: "PUT", body: data, token, id }),
-    onSuccess: () => query.refetch(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [endpoint] }),
     ...options?.updateOptions,
   });
 
