@@ -4,9 +4,13 @@ from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import Response
-
 from .models import Movie
-from .serializers import MovieSerializer
+from .serializers import MovieSerializer, CustomPasswordChangeSerializer
+from dj_rest_auth.views import PasswordChangeView
+
+
+class CustomPasswordChangeView(PasswordChangeView):
+    serializer_class = CustomPasswordChangeSerializer
 
 
 class GoogleLogin(SocialLoginView):

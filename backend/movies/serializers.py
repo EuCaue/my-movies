@@ -1,6 +1,44 @@
-from rest_framework import serializers
-from .models import Movie, CustomUser
+from allauth.account.adapter import validate_password
 from dj_rest_auth.registration.serializers import RegisterSerializer
+from dj_rest_auth.serializers import PasswordChangeSerializer
+from rest_framework import serializers
+from .models import CustomUser, Movie
+from django.utils.translation import gettext_lazy as _
+
+
+class CustomPasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(
+        required=True, write_only=True, validators=[validate_password]
+    )
+    new_password_confirm = serializers.CharField(required=True, write_only=True)
+    new_password1 = None
+    new_password2 = None
+
+    def validate(self, attrs):
+        if "current_password" not in attrs:
+            raise serializers.ValidationError(
+                {"current_password": _("This field is required.")}
+            )
+
+        if attrs.get("new_password") != attrs.get("new_password_confirm"):
+            raise serializers.ValidationError(
+                {"new_password_confirm": _("Passwords do not match.")}
+            )
+
+        user = self.context["request"].user
+        if not user.check_password(attrs.get("current_password")):
+            raise serializers.ValidationError(
+                {"current_password": _("Old password is incorrect.")}
+            )
+
+        return attrs
+
+    def save(self):
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
+        user.save()
+        return user
 
 
 class MovieSerializer(serializers.ModelSerializer):

@@ -26,14 +26,15 @@ ACCOUNT_USERNAME_REQUIRED = True
 AUTH_USER_MODEL = "movies.CustomUser"
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
-    "UPDATE_LAST_LOGIN": True,
-    "SIGNING_KEY": "complexsigningkey",  # generate a key and replace me
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=45),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=6),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
     "ALGORITHM": "HS512",
+    "SIGNING_KEY": "complexsigningkey",  # generate a key and replace me
 }
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -172,6 +173,7 @@ REST_AUTH = {
     "JWT_AUTH_HTTPONLY": False,
     "USER_DETAILS_SERIALIZER": "movies.serializers.CustomUserDetailsSerializer",
     "REGISTER_SERIALIZER": "movies.serializers.CustomRegisterSerializer",
+    "PASSWORD_CHANGE_SERIALIZER": "movies.serializers.CustomPasswordChangeSerializer",
 }
 
 SOCIALACCOUNT_PROVIDERS = {
