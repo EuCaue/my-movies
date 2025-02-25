@@ -7,9 +7,11 @@ export async function middleware(req: NextRequest) {
   if (token && (pathname === "/signin" || pathname === "/signup")) {
     return Response.redirect(new URL("/", req.url));
   }
+  if (!token && pathname === "/user")
+    return Response.redirect(new URL("/", req.url));
   return null;
 }
 
 export const config = {
-  matcher: ["/signin", "/signup"],
+  matcher: ["/signin", "/signup", "/user"],
 };
