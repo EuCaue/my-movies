@@ -5,7 +5,8 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
+import MenuItem, { MenuItemProps } from "@mui/material/MenuItem";
+import LogoutIcon from "@mui/icons-material/Logout";
 import {
   AccountCircleRounded,
   MenuRounded,
@@ -15,32 +16,87 @@ import {
   PersonAdd,
 } from "@mui/icons-material";
 import { signOut, useSession } from "next-auth/react";
-import { Link, Stack, ListItemIcon, Typography } from "@mui/material";
+import {
+  Link,
+  Stack,
+  ListItemIcon,
+  Typography,
+  ButtonBaseProps,
+} from "@mui/material";
 
-type Page = {
-  href: string;
+function HeaderItem({
+  keyID,
+  href,
+  displayName,
+  icon,
+  menuItemProps,
+}: {
+  keyID: string;
+  href?: string;
   displayName: string;
   icon: React.ReactNode;
-};
+  menuItemProps?: MenuItemProps & ButtonBaseProps;
+}) {
+  return (
+    <MenuItem key={keyID} component={Link} href={href} {...menuItemProps}>
+      <ListItemIcon>{icon}</ListItemIcon>
+      <Typography variant="body1" color="textPrimary">
+        {displayName}
+      </Typography>
+    </MenuItem>
+  );
+}
 
-const PAGES: Array<Page> = [
-  {
-    href: "landing-page",
-    displayName: "Home",
-    icon: <Home fontSize="small" />,
-  },
-  { href: "/", displayName: "Movies", icon: <Movie fontSize="small" /> },
-];
+function AuthHeaderItems({ isAuth }: { isAuth: boolean }) {
+  return isAuth
+    ? [
+        <HeaderItem
+          key="movies"
+          keyID="movies"
+          href="/"
+          displayName="Movies"
+          icon={<Movie fontSize="small" />}
+        />,
+        <HeaderItem
+          key="user-profile"
+          keyID="user-profile"
+          href="/user"
+          displayName="User Profile"
+          icon={<AccountCircleRounded fontSize="small" />}
+        />,
+        <HeaderItem
+          key="logout"
+          keyID="logout"
+          displayName="Logout"
+          icon={<LogoutIcon fontSize="small" />}
+          menuItemProps={{
+            onClick: () => {
+              signOut({ redirectTo: "/landing-page" });
+            },
+          }}
+        />,
+      ]
+    : [
+        <HeaderItem
+          key="signin"
+          keyID="signin"
+          href="/signin"
+          displayName="Sign In"
+          icon={<Login fontSize="small" />}
+        />,
+        <HeaderItem
+          key="signup"
+          keyID="signup"
+          href="/signup"
+          displayName="Sign Up"
+          icon={<PersonAdd fontSize="small" />}
+        />,
+      ];
+}
 
 export default function Header() {
   const { data: session } = useSession();
-  const [userAnchorEl, setUserAnchorEl] = useState<HTMLElement | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
-  const isLoggedIn = !!session;
-
-  function handleUserMenuOpen(event: React.MouseEvent<HTMLButtonElement>) {
-    setUserAnchorEl(event.currentTarget);
-  }
 
   function handleMenuOpen(event: React.MouseEvent<HTMLButtonElement>) {
     setMenuAnchorEl(event.currentTarget);
@@ -50,14 +106,6 @@ export default function Header() {
     setMenuAnchorEl(null);
   }
 
-  function handleUserMenuClose() {
-    setUserAnchorEl(null);
-  }
-
-  function onLogout() {
-    signOut({ redirectTo: "/landing-page" });
-    handleUserMenuClose();
-  }
 
   return (
     <AppBar position="fixed">
@@ -81,98 +129,21 @@ export default function Header() {
           My Movies
         </Link>
         <Stack direction={"row"} spacing={1}>
-          {isLoggedIn ? (
-            <IconButton color="inherit" onClick={handleUserMenuOpen}>
-              <AccountCircleRounded />
-            </IconButton>
-          ) : null}
+          <ModeSwitch />
         </Stack>
-        <Menu
-          anchorEl={userAnchorEl}
-          open={Boolean(userAnchorEl)}
-          onClose={handleUserMenuClose}
-        >
-          <MenuItem>
-            <ListItemIcon>
-              <AccountCircleRounded fontSize="small" />
-            </ListItemIcon>
-            <Link
-              href="/user/"
-              variant="button"
-              underline="none"
-              color="textPrimary"
-            >
-              Profile
-            </Link>
-          </MenuItem>
-          <MenuItem onClick={onLogout}>Logout</MenuItem>
-        </Menu>
         <Menu
           anchorEl={menuAnchorEl}
           open={Boolean(menuAnchorEl)}
           onClose={handleMenuClose}
         >
-          {PAGES.map(({ href, displayName, icon }) => {
-            return (
-              <MenuItem key={href} onClick={handleMenuClose}>
-                <ListItemIcon>{icon}</ListItemIcon>
-                <Typography variant="body1" color="textPrimary">
-                  <Link href={href} underline="none" color="textPrimary">
-                    {displayName}
-                  </Link>
-                </Typography>
-              </MenuItem>
-            );
-          })}
-          {session ? (
-            <MenuItem>
-              <ListItemIcon>
-                <AccountCircleRounded fontSize="small" />
-              </ListItemIcon>
-              <Link
-                href={"/user"}
-                underline="none"
-                variant="button"
-                color="textPrimary"
-              >
-                User Profile
-              </Link>
-            </MenuItem>
-          ) : (
-            <>
-              <MenuItem>
-                <ListItemIcon>
-                  <Login fontSize="small" />
-                </ListItemIcon>
-                <Link
-                  href={"/signin"}
-                  underline="none"
-                  variant="button"
-                  color="textPrimary"
-                >
-                  Sign In
-                </Link>
-              </MenuItem>
-              <MenuItem>
-                <ListItemIcon>
-                  <PersonAdd fontSize="small" />
-                </ListItemIcon>
-                <Link
-                  href={"/signup"}
-                  underline="none"
-                  variant="button"
-                  color="textPrimary"
-                >
-                  Sign Up
-                </Link>
-              </MenuItem>
-            </>
-          )}
-          <MenuItem>
-            <ListItemIcon>
-              <ModeSwitch />
-            </ListItemIcon>
-          </MenuItem>
+          <HeaderItem
+            href="landing-page/"
+            key="landing-page"
+            keyID="landing-page"
+            displayName="Home"
+            icon={<Home fontSize="small" />}
+          />
+          <AuthHeaderItems isAuth={!!session} />
         </Menu>
       </Toolbar>
     </AppBar>
