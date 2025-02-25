@@ -5,9 +5,7 @@ import Google from "next-auth/providers/google";
 const BACKEND_ACCESS_TOKEN_LIFETIME = 45 * 60; // 45 min
 const BACKEND_REFRESH_TOKEN_LIFETIME = 6 * 24 * 60 * 60; // 6 days
 
-const getCurrentEpochTime = () => {
-  return Math.floor(new Date().getTime() / 1000);
-};
+const getCurrentEpochTime = () => Math.floor(Date.now() / 1000);
 
 const SIGN_IN_HANDLERS = {
   credentials: async (user, account, profile, email, credentials) => {
@@ -19,9 +17,7 @@ const SIGN_IN_HANDLERS = {
         `${process.env.NEXTAUTH_BACKEND_URL}google/`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             access_token: account["id_token"],
           }),
@@ -57,19 +53,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const apiUrl = process.env.NEXTAUTH_BACKEND_URL + "auth/login/";
           const response = await fetch(apiUrl, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(credentials),
           });
 
           const data = await response.json();
 
           if (!response.ok) {
-            const errorMessage = data.non_field_errors?.[0] as
-              | string
-              | undefined;
-            return { error: errorMessage || "Invalid credentials." };
+            const errorMessage =
+              data.non_field_errors?.[0] || "Invalid credentials.";
+            return { error: errorMessage };
           }
           if (data) return data;
         } catch (error) {
@@ -78,7 +71,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return null;
       },
     }),
-
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
@@ -107,33 +99,46 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       );
     },
     async jwt({ user, token, account }) {
+      // On initial sign in
       if (user && account) {
         const backendResponse =
           account.provider === "credentials" ? user : account.meta;
-        token["user"] = backendResponse.user;
-        token["access_token"] = backendResponse.access;
-        token["refresh_token"] = backendResponse.refresh;
-        token["ref"] = getCurrentEpochTime() + BACKEND_ACCESS_TOKEN_LIFETIME;
+        token.user = backendResponse.user;
+        token.access_token = backendResponse.access;
+        token.refresh_token = backendResponse.refresh;
+        token.ref = getCurrentEpochTime() + BACKEND_ACCESS_TOKEN_LIFETIME;
         return token;
       }
 
-      if (getCurrentEpochTime() > token["ref"]) {
+      // If the access token is still valid
+      if (getCurrentEpochTime() < token.ref) {
+        return token;
+      }
+
+      // Try to refresh the token
+      try {
         const response = await fetch(
           `${process.env.NEXTAUTH_BACKEND_URL}auth/token/refresh/`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              refresh: token["refresh_token"],
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh: token.refresh_token }),
           },
         );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Refresh token error details:", errorData);
+          throw new Error("Failed to refresh token");
+        }
+
         const data = await response.json();
-        token["access_token"] = data.access;
-        token["refresh_token"] = data.refresh;
-        token["ref"] = getCurrentEpochTime() + BACKEND_ACCESS_TOKEN_LIFETIME;
+        token.access_token = data.access;
+        token.refresh_token = data.refresh; // refresh token rotation
+        token.ref = getCurrentEpochTime() + BACKEND_ACCESS_TOKEN_LIFETIME;
+      } catch (error) {
+        console.error("Error refreshing token:", error);
+        token.error = "RefreshAccessTokenError";
       }
       return token;
     },
@@ -141,6 +146,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user = token.user;
       session.accessToken = token.access_token;
       session.refreshToken = token.refresh_token;
+      session.error = token.error;
       return session;
     },
   },
