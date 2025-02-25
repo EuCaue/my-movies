@@ -14,6 +14,7 @@ import {
   Fab,
   Rating,
   Stack,
+  Typography,
   useMediaQuery,
 } from "@mui/material";
 import {
@@ -24,7 +25,13 @@ import {
   GridPreProcessEditCellProps,
   GridActionsCellItem,
 } from "@mui/x-data-grid";
-import { Add, Delete, Favorite, FavoriteBorder } from "@mui/icons-material";
+import {
+  Add,
+  ArrowDownward,
+  Delete,
+  Favorite,
+  FavoriteBorder,
+} from "@mui/icons-material";
 import { useCallback, useState } from "react";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -201,8 +208,9 @@ export default function Home() {
 
   const processRowUpdate = useCallback(
     (updatedRow: GridRowModel) => {
-      const currentRow = query.data.find((row: GridRow) => row.id === updatedRow.id);
-
+      const currentRow = query.data.find(
+        (row: GridRow) => row.id === updatedRow.id,
+      );
 
       if (!currentRow) {
         return updatedRow;
@@ -341,7 +349,6 @@ export default function Home() {
   }
 
   if (!session) {
-    //  TODO: adding a snackar message here
     router.push("/landing-page");
     return;
   }
@@ -396,7 +403,10 @@ export default function Home() {
           alignItems: "center",
         }}
       >
-        <Stack direction="column" spacing={2} alignItems={"center"}>
+        <Stack direction="column" spacing={4} alignItems={"center"}>
+          <Typography variant="h4" gutterBottom color="info">
+              Your Movies 
+          </Typography>
           <DataGrid
             rows={query.data}
             columns={columns}
