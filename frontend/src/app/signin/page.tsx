@@ -1,6 +1,7 @@
 "use client";
 import AuthButton from "@/components/auth-button";
 import { PasswordField } from "@/components/password-field";
+import PopUp from "@/components/popup";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Alert,
@@ -97,22 +98,12 @@ export default function SignIn() {
         alignItems: "center",
       }}
     >
-      <Snackbar
+      <PopUp
         open={openLoginStatus}
-        autoHideDuration={6000}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        key={"bottomcenter"}
-      >
-        <Alert
-          onClose={handleClose}
-          severity={loginStatus.severity}
-          variant="filled"
-          sx={{ width: "100%", fontSize: "1.125rem" }}
-        >
-          {loginStatus.message}
-        </Alert>
-      </Snackbar>
+        handleClose={handleClose}
+        severity={loginStatus.severity}
+        message={loginStatus.message}
+      />
       <form
         noValidate
         onSubmit={handleSubmit(onSubmit, (errors) => console.error(errors))}
