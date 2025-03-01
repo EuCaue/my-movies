@@ -12,6 +12,7 @@ class CustomUser(AbstractUser):
 
 
 class Movie(models.Model):
+
     WATCH_STATUS = [
         ("Not Watched", "Not Watched"),
         ("Watching", "Watching"),

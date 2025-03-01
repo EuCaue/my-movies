@@ -20,12 +20,14 @@ class GoogleLogin(SocialLoginView):
 
 
 class MovieViewSet(viewsets.ModelViewSet):
-    queryset = Movie.objects.all()
     serializer_class = MovieSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def get_queryset(self):
+        return Movie.objects.filter(owner=self.request.user)
 
     @action(detail=False, methods=["get"])
     def my_movies(self, request):
