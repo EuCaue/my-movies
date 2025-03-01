@@ -60,15 +60,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const data = await response.json();
 
           if (!response.ok) {
-            const errorMessage =
-              data.non_field_errors?.[0] || "Invalid credentials.";
-            return { error: errorMessage };
+            console.error("Login Error:", data);
+            return null; 
           }
-          if (data) return data;
+
+          return data;
         } catch (error) {
           console.error("ERROR LOGIN -> ", error);
+          return null; 
         }
-        return null;
       },
     }),
     Google({
@@ -98,11 +98,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         credentials,
       );
     },
+
     async jwt({ user, token, account }) {
-      // On initial sign in
       if (user && account) {
         const backendResponse =
           account.provider === "credentials" ? user : account.meta;
+
+        if (!backendResponse?.access || !backendResponse?.refresh) {
+          return token; 
+        }
+
         token.user = backendResponse.user;
         token.access_token = backendResponse.access;
         token.refresh_token = backendResponse.refresh;
@@ -110,12 +115,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token;
       }
 
-      // If the access token is still valid
       if (getCurrentEpochTime() < token.ref) {
         return token;
       }
 
-      // Try to refresh the token
       try {
         const response = await fetch(
           `${process.env.NEXTAUTH_BACKEND_URL}auth/token/refresh/`,
@@ -127,19 +130,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
 
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Refresh token error details:", errorData);
+          console.error("Refresh token error:", await response.json());
           throw new Error("Failed to refresh token");
         }
 
         const data = await response.json();
         token.access_token = data.access;
-        token.refresh_token = data.refresh; // refresh token rotation
+        token.refresh_token = data.refresh;
         token.ref = getCurrentEpochTime() + BACKEND_ACCESS_TOKEN_LIFETIME;
       } catch (error) {
         console.error("Error refreshing token:", error);
         token.error = "RefreshAccessTokenError";
       }
+
       return token;
     },
     async session({ session, token }) {

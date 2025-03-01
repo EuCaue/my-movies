@@ -27,7 +27,6 @@ import {
 } from "@mui/x-data-grid";
 import {
   Add,
-  ArrowDownward,
   Delete,
   Favorite,
   FavoriteBorder,
@@ -405,11 +404,17 @@ export default function Home() {
       >
         <Stack direction="column" spacing={4} alignItems={"center"}>
           <Typography variant="h4" gutterBottom color="info">
-              Your Movies 
+            Your Movies
           </Typography>
           <DataGrid
             rows={query.data}
             columns={columns}
+            loading={
+              query.isPending ||
+              postMutation.isPending ||
+              updateMutation.isPending ||
+              deleteMutation.isPending
+            }
             processRowUpdate={processRowUpdate}
             sx={{ width: fullScreen ? "90vw" : "auto" }}
           />

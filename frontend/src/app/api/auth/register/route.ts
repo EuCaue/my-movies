@@ -30,8 +30,12 @@ export async function POST(req: Request) {
       body: JSON.stringify(credentials),
     });
 
-    const data = response.json();
-
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.log(errorData)
+      throw new Error(JSON.stringify(errorData));
+    }
+    const data = await response.json();
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("ERROR:", error.response?.data || error.message);

@@ -56,7 +56,7 @@ export default function SignUp() {
   const { mutate, isPending, error } = useRegisterUser();
 
   const backendError: Record<string, string> = error
-    ? JSON.parse(error.message)?.details
+    ? JSON.parse(JSON.parse(error.message)?.details)
     : {};
 
   const {
@@ -85,7 +85,7 @@ export default function SignUp() {
       onError: (error) => {
         console.error("Backend error:", error);
       },
-      onSuccess: async () => {
+      onSuccess: async (data) => {
         try {
           await signIn("credentials", {
             email: credentials.email,

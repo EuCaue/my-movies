@@ -13,8 +13,10 @@ async function fetchData(endpoint: string, token?: string) {
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (!response.ok) throw new Error("Error while fetching data...");
-
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw { message: "Request failed", details: errorData };
+  }
   return response.json();
 }
 
