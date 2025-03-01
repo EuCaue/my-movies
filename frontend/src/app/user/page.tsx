@@ -22,6 +22,7 @@ import { useAuthQuery } from "@/hooks/useAuthQuery";
 import { useSession } from "next-auth/react";
 import { PasswordField } from "@/components/password-field";
 import PopUp from "@/components/popup";
+import { useRouter } from "next/navigation";
 
 const profileSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -97,7 +98,8 @@ function capitalizeFirstLetter(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 export default function ProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [openUserDataPopup, setOpenUserDataPopup] = useState<boolean>(false);
   const [userDataChangedStatus, setUserDataChangedStatus] = useState<{
     message: string;
@@ -244,6 +246,14 @@ export default function ProfilePage() {
       postMutation.mutate(payloadPasswordData);
     }
   };
+
+  useEffect(() => {
+    if (status === "loading") return;
+
+    if (!session) {
+      router.push("/signin");
+    }
+  }, [session, status, router]);
 
   return (
     <>

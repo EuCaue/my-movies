@@ -23,6 +23,7 @@ import {
   Typography,
   ButtonBaseProps,
 } from "@mui/material";
+import { Session } from "next-auth";
 
 function HeaderItem({
   keyID,
@@ -47,7 +48,14 @@ function HeaderItem({
   );
 }
 
-function AuthHeaderItems({ isAuth }: { isAuth: boolean }) {
+function AuthHeaderItems({
+  isAuth,
+  session,
+}: {
+  isAuth: boolean;
+  session: Session;
+}) {
+  console.log(session)
   return isAuth
     ? [
         <HeaderItem
@@ -61,7 +69,7 @@ function AuthHeaderItems({ isAuth }: { isAuth: boolean }) {
           key="user-profile"
           keyID="user-profile"
           href="/user"
-          displayName="User Profile"
+          displayName={`${session.user.username} Profile`}
           icon={<AccountCircleRounded fontSize="small" />}
         />,
         <HeaderItem
@@ -106,7 +114,6 @@ export default function Header() {
     setMenuAnchorEl(null);
   }
 
-
   return (
     <AppBar position="fixed">
       <Toolbar>
@@ -143,7 +150,7 @@ export default function Header() {
             displayName="Home"
             icon={<Home fontSize="small" />}
           />
-          <AuthHeaderItems isAuth={!!session} />
+          <AuthHeaderItems isAuth={!!session} session={session} />
         </Menu>
       </Toolbar>
     </AppBar>
