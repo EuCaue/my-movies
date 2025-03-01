@@ -1,6 +1,6 @@
 # My Movies
 
-My Movies is a modern web application designed to help you effortlessly manage your movie list! :rocket:
+> My Movies is a modern web application designed to help you effortlessly manage your movie list! :rocket:
 
 ## :computer: Tech Stack
 
